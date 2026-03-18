@@ -164,6 +164,137 @@
     60% { opacity: 0.9; }
     100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(1.4); }
   }
+
+  /* 10번 클릭 메시지 */
+  #love-message {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: rgba(13, 0, 8, 0.7);
+    backdrop-filter: blur(6px);
+  }
+  #love-message.show {
+    display: flex;
+    animation: msgFadeIn 0.5s ease forwards;
+  }
+  @keyframes msgFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .msg-hearts {
+    font-size: 80px;
+    animation: msgHeartPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  @keyframes msgHeartPop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+  .msg-text {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 8vw, 6rem);
+    font-weight: 700;
+    background: linear-gradient(135deg, #ffb3d9, #ff2d78, #c92b8c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-top: 20px;
+    opacity: 0;
+    animation: msgTextSlide 0.7s 0.3s ease forwards;
+    text-align: center;
+    filter: drop-shadow(0 0 30px #ff2d78aa);
+  }
+  @keyframes msgTextSlide {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg-close {
+    margin-top: 40px;
+    opacity: 0;
+    animation: msgTextSlide 0.7s 0.7s ease forwards;
+    font-size: 0.85rem;
+    color: #ffb3d9;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    pointer-events: all;
+    border: 1px solid #ff2d7866;
+    padding: 10px 28px;
+    border-radius: 50px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .msg-close:hover {
+    background: #ff2d7822;
+    border-color: #ff2d78;
+  }
+
+  /* 카운터 표시 */
+  #click-counter {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    pointer-events: none;
+  }
+  .counter-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #ff2d7844;
+    border: 1px solid #ff2d7888;
+    transition: background 0.3s, transform 0.3s;
+  }
+  .counter-dot.filled {
+    background: #ff2d78;
+    border-color: #ff6eb4;
+    transform: scale(1.3);
+    box-shadow: 0 0 8px #ff2d78;
+  }
+
+  /* 하트 천사 */
+  #heart-angel {
+    display: none;
+    position: fixed;
+    font-size: 52px;
+    z-index: 500;
+    cursor: none;
+    pointer-events: all;
+    user-select: none;
+    filter: drop-shadow(0 0 16px #ff6eb4cc);
+    transition: filter 0.2s;
+    will-change: transform;
+  }
+  #heart-angel.active {
+    display: block;
+    animation: angelAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  @keyframes angelAppear {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);  opacity: 1; }
+  }
+  #angel-hint {
+    display: none;
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 501;
+    font-size: 0.78rem;
+    color: #ffb3d9;
+    letter-spacing: 0.2em;
+    opacity: 0.6;
+    pointer-events: none;
+    animation: fadeHint 2.5s ease-in-out infinite;
+    white-space: nowrap;
+  }
+  #angel-hint.active { display: block; }
+
 </style>
 </head>
 <body>
@@ -183,6 +314,33 @@
 </div>
 
 <div class="hint">♥ Click anywhere ♥</div>
+
+<!-- 10번 클릭 메시지 -->
+<div id="love-message">
+  <div class="msg-hearts">💖💕💖</div>
+  <div class="msg-text">오라방 사랑해 💗</div>
+  <div class="msg-close" onclick="closeMessage()">닫기 ✕</div>
+</div>
+
+<!-- 클릭 카운터 도트 -->
+<div id="click-counter">
+  <div class="counter-dot" id="dot-1"></div>
+  <div class="counter-dot" id="dot-2"></div>
+  <div class="counter-dot" id="dot-3"></div>
+  <div class="counter-dot" id="dot-4"></div>
+  <div class="counter-dot" id="dot-5"></div>
+  <div class="counter-dot" id="dot-6"></div>
+  <div class="counter-dot" id="dot-7"></div>
+  <div class="counter-dot" id="dot-8"></div>
+  <div class="counter-dot" id="dot-9"></div>
+  <div class="counter-dot" id="dot-10"></div>
+</div>
+
+<!-- 하트 천사 -->
+<div id="heart-angel">👼💖</div>
+<div id="angel-hint">하트천사를 잡으면 매일매일 쩩쮸💕</div>
+
+
 
 <script>
   // Custom cursor
@@ -262,7 +420,149 @@
   animate();
 
   // Click: burst hearts
+  let clickCount = 0;
+  const TRIGGER = 10;
+
+  function closeMessage() {
+    document.getElementById('love-message').classList.remove('show');
+    clickCount = 0;
+    for (let i = 1; i <= 10; i++) document.getElementById('dot-' + i).classList.remove('filled');
+    // 닫기 누르면 천사 등장!
+    setTimeout(spawnAngel, 300);
+  }
+
+  // ── 하트 천사 로직 ──────────────────────────────
+  let angelActive = false;
+  let ax = 200, ay = 200;      // 천사 위치
+  let avx = 2.5, avy = -2;    // 천사 속도
+  let mouseX = -999, mouseY = -999;
+  let angelRaf = null;
+
+  const angel = document.getElementById('heart-angel');
+  const angelHint = document.getElementById('angel-hint');
+  const FLEE_RADIUS = 280;  // 마우스 이 거리 안에 오면 도망
+  const ANGEL_SPEED = 13;
+
+  document.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function spawnAngel() {
+    ax = window.innerWidth / 2;
+    ay = window.innerHeight / 2;
+    avx = 3; avy = -2.5;
+    angel.style.left = ax + 'px';
+    angel.style.top  = ay + 'px';
+    angel.classList.add('active');
+    angelHint.classList.add('active');
+    angelActive = true;
+    angelLoop();
+  }
+
+  function angelLoop() {
+    if (!angelActive) return;
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const SIZE = 56;
+
+    // 마우스와 거리 계산
+    const dx = ax - mouseX;
+    const dy = ay - mouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < FLEE_RADIUS) {
+      // 도망! 마우스 반대 방향으로 강하게 가속
+      const flee = (FLEE_RADIUS - dist) / FLEE_RADIUS; // 0~1
+      const nx = dx / (dist || 1);
+      const ny = dy / (dist || 1);
+      avx += nx * flee * 5.0;
+      avy += ny * flee * 5.0;
+      // 이모지 흔들림 표현
+      angel.style.filter = `drop-shadow(0 0 ${20 + flee*30}px #ff2d78) rotate(${(avx*5).toFixed(1)}deg)`;
+    } else {
+      // 자연스러운 방랑
+      avx += (Math.random() - 0.5) * 0.4;
+      avy += (Math.random() - 0.5) * 0.4;
+      angel.style.filter = 'drop-shadow(0 0 16px #ff6eb4cc)';
+    }
+
+    // 속도 제한
+    const speed = Math.sqrt(avx * avx + avy * avy);
+    if (speed > ANGEL_SPEED) {
+      avx = (avx / speed) * ANGEL_SPEED;
+      avy = (avy / speed) * ANGEL_SPEED;
+    }
+    // 최소 속도 (멈추지 않게)
+    if (speed < 1.2) {
+      avx += (Math.random() - 0.5) * 1.5;
+      avy += (Math.random() - 0.5) * 1.5;
+    }
+
+    ax += avx;
+    ay += avy;
+
+    // 벽 반사
+    if (ax < 10)       { ax = 10;       avx = Math.abs(avx); }
+    if (ax > W - SIZE) { ax = W - SIZE; avx = -Math.abs(avx); }
+    if (ay < 10)       { ay = 10;       avy = Math.abs(avy); }
+    if (ay > H - SIZE) { ay = H - SIZE; avy = -Math.abs(avy); }
+
+    angel.style.left = ax + 'px';
+    angel.style.top  = ay + 'px';
+
+    angelRaf = requestAnimationFrame(angelLoop);
+  }
+
+  // 천사는 절대 못 잡음 - pointer-events none으로 클릭 불가
+  angel.style.pointerEvents = 'none';
+
+  function triggerLoveMessage() {
+    // 대폭발 파티클
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    for (let i = 0; i < 60; i++) {
+      const p = new Particle(cx + (Math.random()-0.5)*200, cy + (Math.random()-0.5)*200, true);
+      p.vx *= 2.5;
+      p.vy *= 2.5;
+      p.size *= 1.5;
+      particles.push(p);
+    }
+    // DOM 폭발 하트
+    for (let i = 0; i < 20; i++) {
+      const el = document.createElement('div');
+      el.className = 'burst-heart';
+      const angle = (i / 20) * Math.PI * 2;
+      const dist = 80 + Math.random() * 160;
+      el.style.left = cx + 'px';
+      el.style.top = cy + 'px';
+      el.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+      el.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+      el.textContent = cursorHearts[Math.floor(Math.random() * cursorHearts.length)];
+      el.style.fontSize = (24 + Math.random() * 28) + 'px';
+      el.style.animationDuration = '1.2s';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1300);
+    }
+    setTimeout(() => {
+      document.getElementById('love-message').classList.add('show');
+    }, 400);
+  }
+
   document.addEventListener('click', e => {
+    // 메시지 화면 떠 있으면 무시
+    if (document.getElementById('love-message').classList.contains('show')) return;
+
+    clickCount++;
+    if (clickCount <= 10) {
+      document.getElementById('dot-' + clickCount).classList.add('filled');
+    }
+    if (clickCount === TRIGGER) {
+      triggerLoveMessage();
+      return;
+    }
+
     const count = 14;
     for (let i = 0; i < count; i++) {
       particles.push(new Particle(e.clientX, e.clientY, true));
